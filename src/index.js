@@ -11,21 +11,25 @@ import './styles.css';
 import { detectFormat } from './core/detect.js';
 import { resolveViewer, SUPPORTED } from './core/registry.js';
 import { setConfig } from './core/config.js';
+import { shouldConvert, convertToPdf } from './core/converter.js';
 import { clear, spinner, messagePanel } from './utils/dom.js';
 
 export class MultiViewer {
   /**
-   * @param {{ container: string|HTMLElement, assetsPath?: string, rhwpWasmUrl?: string }} opts
+   * @param {{ container: string|HTMLElement, assetsPath?: string, rhwpWasmUrl?: string,
+   *           converter?: { url: string, token?: string, formats?: string[], timeoutMs?: number } }} opts
    *   assetsPath   Folder hosting rhwp_bg.wasm and mv-pdf.worker.js (default './').
    *   rhwpWasmUrl  Explicit URL for the rhwp WASM binary (overrides assetsPath).
+   *   converter    Local conversion agent: formats listed here render via
+   *                server-side PDF, falling back to the client viewer on failure.
    */
-  constructor({ container, assetsPath, rhwpWasmUrl } = {}) {
+  constructor({ container, assetsPath, rhwpWasmUrl, converter } = {}) {
     const node = typeof container === 'string' ? document.querySelector(container) : container;
     if (!node) throw new Error(`MultiViewer: container not found (${container})`);
     this.root = node;
     this.root.classList.add('mv-root');
     this._token = 0; // guards against out-of-order renders
-    setConfig({ assetsPath, rhwpWasmUrl });
+    setConfig({ assetsPath, rhwpWasmUrl, converter });
   }
 
   /** Detect the format of a file without rendering it. */
@@ -48,6 +52,26 @@ export class MultiViewer {
     clear(this.root).append(spinner(`${filename || 'file'} 여는 중…`));
 
     const ctx = { bytes, blob, filename, ...detection, SUPPORTED };
+    let via = detection.via;
+
+    // Optional: route selected formats through the local conversion agent,
+    // rendering the returned PDF. Falls back to the client viewer on failure.
+    if (shouldConvert(detection.format)) {
+      clear(this.root).append(spinner(`${filename || 'file'} 변환 중…`));
+      try {
+        const pdf = await convertToPdf(bytes, filename);
+        if (token !== this._token) return detection;
+        const pdfMod = await resolveViewer('pdf')();
+        if (token !== this._token) return detection;
+        const surface = clear(this.root);
+        await pdfMod.default(surface, { ...ctx, bytes: pdf, blob: new Blob([pdf], { type: 'application/pdf' }), format: 'pdf', converted: true });
+        return { ...detection, via: 'converter' };
+      } catch (err) {
+        console.warn('[MultiViewer] 변환 실패, 클라이언트 뷰어로 폴백:', err?.message || err);
+        clear(this.root).append(spinner(`${filename || 'file'} 여는 중…`));
+      }
+    }
+
     try {
       const mod = await resolveViewer(detection.format)();
       if (token !== this._token) return detection; // superseded by a newer render
@@ -64,7 +88,7 @@ export class MultiViewer {
         })
       );
     }
-    return detection;
+    return { ...detection, via };
   }
 
   /** Remove rendered content. */

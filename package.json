@@ -21,7 +21,8 @@
     "build": "vite build && vite build --config vite.worker.config.js",
     "preview": "vite preview",
     "fixtures": "node test/gen-fixtures.mjs",
-    "test": "node test/detect.test.mjs && node test/gen-fixtures.mjs && node test/smoke.mjs"
+    "agent": "node agent/server.mjs",
+    "test": "node test/detect.test.mjs && node test/agent.test.mjs && node test/gen-fixtures.mjs && node test/smoke.mjs"
   },
   "keywords": [
     "viewer",

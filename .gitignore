@@ -1,5 +1,6 @@
 node_modules/
 dist/
 test/fixtures/
+test/.agent-cache/
 *.log
 .DS_Store
