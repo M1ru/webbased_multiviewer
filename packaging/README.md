@@ -27,20 +27,28 @@ node packaging/build-agent.mjs --node ./node.exe --out build/mv-agent.exe
 
 > 참고: 산출물은 약 100MB대(Node 런타임 포함)입니다.
 
-## 2. 포터블 LibreOffice 준비
+## 2. 동반 바이너리 자동 다운로드 (LibreOffice + NSSM)
 
-`vendor/LibreOffice/` 에 포터블 LibreOffice를 넣습니다(`program/soffice.exe` 포함).
-[LibreOffice Portable](https://www.libreoffice.org/download/portable-versions/)
-또는 설치본의 프로그램 폴더를 사용하세요. HWP import에는 JRE가 필요할 수 있어
-JRE 포함 포터블 구성이 안전합니다.
+수동으로 받을 필요 없이 스크립트로 내려받습니다.
 
-## 3. 서비스 래퍼(NSSM) 준비
+```bash
+npm run fetch:vendor
+# 또는 버전 지정 / 개별 다운로드
+node packaging/fetch-vendor.mjs --lo-version 25.2.5
+node packaging/fetch-vendor.mjs --only nssm
+```
 
-콘솔 exe를 Windows 서비스로 감싸기 위해 [NSSM](https://nssm.cc/download)의
-`nssm.exe`를 `vendor/nssm.exe` 에 둡니다. (Node/SEA에는 서비스 지원이 없어 NSSM으로
-SCM 연동합니다.)
+- **NSSM**: zip을 받아 `packaging/vendor/nssm.exe` 로 추출(OS 무관, 완전 자동).
+- **LibreOffice**: 공식 Windows MSI를 받습니다.
+  - Windows에서 실행하면 `msiexec /a` 로 자동 추출 →
+    `packaging/vendor/LibreOffice/program/soffice.exe`
+  - 다른 OS에서 실행하면 MSI만 받고, Windows에서 실행할 추출 명령을 안내합니다.
+  - HWP import에는 JRE가 필요할 수 있으니, 서비스 환경에 JRE가 있는지 확인하세요.
 
-## 4. 설치 프로그램 컴파일 (Inno Setup)
+> 프록시로 외부 다운로드가 막힌 CI/샌드박스에서는 이 단계가 실패할 수 있습니다.
+> 실제 빌드 머신(또는 사내망 미러)에서 실행하세요.
+
+## 3. 설치 프로그램 컴파일 (Inno Setup)
 
 Windows에서 [Inno Setup](https://jrsoftware.org/isinfo.php)으로 컴파일합니다.
 서비스가 호출을 허용할 **웹페이지 Origin**을 반드시 지정하세요.
@@ -54,7 +62,7 @@ iscc /DAllowedOrigins="https://myapp.company.com" packaging\mv-agent.iss
 - `MvAgent` 서비스 등록(자동 시작) + `SOFFICE_PATH`/`MV_PORT`/`MV_ALLOWED_ORIGINS`
   환경 설정 후 서비스 시작
 
-## 5. 웹페이지 연동
+## 4. 웹페이지 연동
 
 ```js
 new MultiViewer({
