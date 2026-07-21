@@ -84,6 +84,13 @@ try {
   const pre = await fetch(`${base}/convert`, { method: 'OPTIONS', headers: { Origin: 'http://evil.example.com' } });
   ok('CORS: foreign preflight rejected (403)', pre.status === 403, `status=${pre.status}`);
 
+  // Private Network Access: preflight opt-in header is echoed
+  const pna = await fetch(`${base}/convert`, {
+    method: 'OPTIONS',
+    headers: { Origin: 'http://localhost:3000', 'Access-Control-Request-Private-Network': 'true' },
+  });
+  ok('PNA: allow-private-network echoed', pna.headers.get('access-control-allow-private-network') === 'true', `status=${pna.status}`);
+
   // Host-header (DNS-rebinding) guard → 403. fetch/undici forbids overriding
   // Host, so use the raw http client to spoof it.
   const badHostStatus = await new Promise((res) => {

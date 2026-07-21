@@ -113,6 +113,11 @@ const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     // Reject disallowed origins outright at preflight.
     if (origin && !originAllowed(origin)) return json(res, 403, { error: 'origin not allowed' });
+    // Private Network Access: modern Chrome preflights public→localhost calls
+    // and requires this opt-in header, otherwise the request is blocked.
+    if (req.headers['access-control-request-private-network'] === 'true') {
+      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
     res.writeHead(204).end();
     return;
   }
