@@ -1,0 +1,270 @@
+/* MultiViewer styles — scoped under .mv-root so the library is safe to embed
+   inside an iframe cell or an existing page without leaking styles. */
+
+.mv-root {
+  --mv-bg: #f4f5f7;
+  --mv-surface: #ffffff;
+  --mv-border: #d7dae0;
+  --mv-text: #1f2329;
+  --mv-muted: #6b7280;
+  --mv-accent: #2f6fed;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  background: var(--mv-bg);
+  color: var(--mv-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+.mv-root * {
+  box-sizing: border-box;
+}
+
+/* ---- Toolbar ---- */
+.mv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--mv-surface);
+  border-bottom: 1px solid var(--mv-border);
+  flex: 0 0 auto;
+  min-height: 38px;
+}
+.mv-toolbar__name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+.mv-toolbar__spacer {
+  flex: 1 1 auto;
+}
+.mv-tag {
+  font-size: 11px;
+  color: var(--mv-muted);
+  background: var(--mv-bg);
+  border: 1px solid var(--mv-border);
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.mv-btn {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 10px;
+  border: 1px solid var(--mv-border);
+  border-radius: 6px;
+  background: var(--mv-surface);
+  color: var(--mv-text);
+  cursor: pointer;
+}
+.mv-btn:hover {
+  border-color: var(--mv-accent);
+  color: var(--mv-accent);
+}
+.mv-btn--primary {
+  background: var(--mv-accent);
+  border-color: var(--mv-accent);
+  color: #fff;
+}
+.mv-btn--primary:hover {
+  color: #fff;
+  filter: brightness(1.05);
+}
+
+/* ---- Loading / message panels ---- */
+.mv-loading {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--mv-muted);
+}
+.mv-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--mv-border);
+  border-top-color: var(--mv-accent);
+  border-radius: 50%;
+  animation: mv-spin 0.8s linear infinite;
+}
+@keyframes mv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mv-message {
+  margin: auto;
+  max-width: 460px;
+  padding: 28px;
+  text-align: center;
+  color: var(--mv-muted);
+}
+.mv-message__icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+.mv-message__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mv-text);
+  margin-bottom: 8px;
+}
+.mv-message__detail {
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+.mv-message__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ---- Scrollable content area shared by most viewers ---- */
+.mv-text,
+.mv-pdf,
+.mv-pptx,
+.mv-hwp,
+.mv-docx {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* ---- Text ---- */
+.mv-text {
+  margin: 0;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'D2Coding', 'Consolas', 'Menlo', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  background: var(--mv-surface);
+}
+.mv-text--extract {
+  color: #333;
+}
+
+/* ---- Spreadsheet grid ---- */
+.mv-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--mv-surface);
+}
+
+/* ---- PDF ---- */
+.mv-pdf {
+  background: #52555b;
+}
+.mv-pdf__pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+.mv-pdf__page {
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- PPTX ---- */
+.mv-pptx {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #e9ebef;
+}
+.mv-slide {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--mv-border);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+}
+.mv-slide__no {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 11px;
+  color: var(--mv-muted);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  padding: 1px 6px;
+  z-index: 2;
+}
+.mv-slide__body {
+  padding: 8px;
+}
+.mv-slide__body svg {
+  display: block;
+}
+.mv-slide__p {
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+.mv-slide__empty {
+  color: var(--mv-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+/* ---- HWP / HWPX ---- */
+.mv-hwp {
+  padding: 16px;
+  background: #e9ebef;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.mv-hwp__page {
+  background: #fff;
+  border: 1px solid var(--mv-border);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 900px;
+}
+.mv-hwp__page svg {
+  display: block;
+}
+.mv-hwp__p {
+  margin: 0 0 8px;
+  line-height: 1.7;
+  width: 100%;
+  max-width: 820px;
+}
+.mv-hwp__table {
+  border-collapse: collapse;
+  margin: 0 auto 12px;
+  width: 100%;
+  max-width: 820px;
+  background: #fff;
+}
+.mv-hwp__table td {
+  border: 1px solid var(--mv-border);
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+/* ---- DOCX (docx-preview supplies its own inner .docx styles) ---- */
+.mv-docx {
+  background: #e9ebef;
+  padding: 16px 0;
+}
+.mv-docx .docx-wrapper {
+  background: transparent;
+  padding: 0;
+}

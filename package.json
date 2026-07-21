@@ -1,0 +1,53 @@
+{
+  "name": "webbased-multiviewer",
+  "version": "0.1.0",
+  "description": "Standalone browser-based multi-file viewer. Detects file type by magic-number + extension and renders each format with an appropriate in-browser viewer.",
+  "type": "module",
+  "main": "./dist/multiviewer.umd.cjs",
+  "module": "./dist/multiviewer.js",
+  "exports": {
+    ".": {
+      "import": "./dist/multiviewer.js",
+      "require": "./dist/multiviewer.umd.cjs"
+    },
+    "./style.css": "./dist/multiviewer.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --config vite.worker.config.js",
+    "preview": "vite preview",
+    "fixtures": "node test/gen-fixtures.mjs",
+    "test": "node test/detect.test.mjs && node test/gen-fixtures.mjs && node test/smoke.mjs"
+  },
+  "keywords": [
+    "viewer",
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "hwp",
+    "hwpx",
+    "csv",
+    "office",
+    "multiviewer"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@rhwp/core": "^0.7.19",
+    "docx-preview": "^0.3.5",
+    "fflate": "^0.8.3",
+    "papaparse": "^5.4.1",
+    "pdfjs-dist": "^5.7.284",
+    "pptx-viewer": "^0.2.2",
+    "x-data-spreadsheet": "^1.1.9",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1",
+    "vite": "^5.4.10"
+  }
+}

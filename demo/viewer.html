@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MultiViewer cell</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      #app {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { MultiViewer } from '../dist/multiviewer.js';
+
+      // Assets (rhwp_bg.wasm, mv-pdf.worker.js) live next to the built bundle.
+      const assetsPath = new URL('../dist/', location.href).href;
+      const viewer = new MultiViewer({ container: '#app', assetsPath });
+
+      // Programmatic hook (used by the smoke test).
+      window.__mv = {
+        render: (fileOrBytes, name) => viewer.render(fileOrBytes, { filename: name }),
+      };
+
+      // Iframe embedding: the parent grid posts a File to each cell.
+      window.addEventListener('message', async (e) => {
+        const d = e.data;
+        if (!d || d.type !== 'mv:render') return;
+        try {
+          const det = await viewer.render(d.file, { filename: d.file?.name });
+          (e.source || window.parent)?.postMessage({ type: 'mv:done', name: d.file?.name, format: det.format }, '*');
+        } catch (err) {
+          (e.source || window.parent)?.postMessage({ type: 'mv:error', error: String(err) }, '*');
+        }
+      });
+
+      window.parent?.postMessage({ type: 'mv:ready' }, '*');
+    </script>
+  </body>
+</html>
