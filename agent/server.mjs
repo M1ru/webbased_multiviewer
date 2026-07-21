@@ -176,12 +176,18 @@ const server = createServer(async (req, res) => {
   }
 });
 
-await mkdir(cfg.cacheDir, { recursive: true }).catch(() => {});
-server.listen(cfg.port, cfg.host, async () => {
-  sofficeVersion = (await probeSoffice(cfg.sofficePath)) || false;
-  console.log(`[mv-agent] listening on http://${cfg.host}:${cfg.port}`);
-  console.log(`[mv-agent] soffice: ${sofficeVersion || 'NOT FOUND — set SOFFICE_PATH'}`);
-  console.log(`[mv-agent] CORS: ${cfg.allowedOrigins.includes('*') ? 'ANY (*)' : `localhost + ${cfg.allowedOrigins.join(', ') || '(none extra)'}`}`);
-});
+// Kept in a function (not top-level await) so the agent can be bundled to a
+// single CommonJS file for the SEA executable.
+async function start() {
+  await mkdir(cfg.cacheDir, { recursive: true }).catch(() => {});
+  server.listen(cfg.port, cfg.host, async () => {
+    sofficeVersion = (await probeSoffice(cfg.sofficePath)) || false;
+    console.log(`[mv-agent] listening on http://${cfg.host}:${cfg.port}`);
+    console.log(`[mv-agent] soffice: ${sofficeVersion || 'NOT FOUND — set SOFFICE_PATH'}`);
+    console.log(`[mv-agent] CORS: ${cfg.allowedOrigins.includes('*') ? 'ANY (*)' : `localhost + ${cfg.allowedOrigins.join(', ') || '(none extra)'}`}`);
+  });
+}
 
-export { server, cfg };
+start();
+
+export { server, cfg, start };

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+build/
+node.exe
+packaging/vendor/
 test/fixtures/
 test/.agent-cache/
 *.log

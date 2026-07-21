@@ -22,6 +22,8 @@
     "preview": "vite preview",
     "fixtures": "node test/gen-fixtures.mjs",
     "agent": "node agent/server.mjs",
+    "build:agent": "node packaging/build-agent.mjs",
+    "build:agent:win": "node packaging/build-agent.mjs --node ./node.exe --out build/mv-agent.exe",
     "test": "node test/detect.test.mjs && node test/agent.test.mjs && node test/gen-fixtures.mjs && node test/smoke.mjs"
   },
   "keywords": [
@@ -49,6 +51,7 @@
   },
   "devDependencies": {
     "playwright": "^1.61.1",
+    "postject": "^1.0.0-alpha.6",
     "vite": "^5.4.10"
   }
 }
