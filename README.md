@@ -89,6 +89,26 @@ const info = await viewer.render(file);   // { format, via }
 iframe.contentWindow.postMessage({ type: 'mv:render', file }, '*');
 ```
 
+## 로컬 변환 에이전트 (하이브리드, 선택)
+
+브라우저 렌더링이 어려운 포맷(특히 구형 `doc`/`ppt`)은 로컬 에이전트가
+LibreOffice로 PDF 변환해 처리할 수 있습니다. 지정한 포맷만 서버로 보내고,
+**에이전트가 없거나 변환 실패 시 자동으로 클라이언트 뷰어로 폴백**합니다.
+
+```js
+new MultiViewer({
+  container: '#app',
+  assetsPath: './dist/',
+  converter: {
+    url: 'http://127.0.0.1:7391',
+    formats: ['doc', 'ppt'],   // 이 형식만 서버 변환 → PDF
+  },
+});
+```
+
+에이전트 실행 방법과 보안(127.0.0.1 바인딩, localhost CORS 강제, Host 검증)은
+[`agent/README.md`](agent/README.md) 참고.
+
 ## API
 
 ### `new MultiViewer(options)`

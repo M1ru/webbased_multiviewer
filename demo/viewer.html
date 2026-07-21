@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MultiViewer cell</title>
+    <link rel="stylesheet" href="../dist/multiviewer.css" />
     <style>
       html,
       body {
@@ -22,7 +23,16 @@
 
       // Assets (rhwp_bg.wasm, mv-pdf.worker.js) live next to the built bundle.
       const assetsPath = new URL('../dist/', location.href).href;
-      const viewer = new MultiViewer({ container: '#app', assetsPath });
+
+      // Optional conversion agent, configured via query params:
+      //   viewer.html?agent=http://127.0.0.1:7391&convert=doc,ppt
+      const q = new URLSearchParams(location.search);
+      const agent = q.get('agent');
+      const converter = agent
+        ? { url: agent, formats: (q.get('convert') || 'doc,ppt').split(',').map((s) => s.trim()).filter(Boolean) }
+        : undefined;
+
+      const viewer = new MultiViewer({ container: '#app', assetsPath, converter });
 
       // Programmatic hook (used by the smoke test).
       window.__mv = {

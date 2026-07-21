@@ -3,6 +3,7 @@
 // and assert the expected DOM appears. Catches runtime/bundling failures that a
 // successful build does not (worker path, x-spreadsheet global, pdf.js worker).
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, extname } from 'node:path';
@@ -41,6 +42,22 @@ const cases = [
 const port = 5199;
 await new Promise((r) => server.listen(port, r));
 const base = `http://localhost:${port}`;
+
+// Local conversion agent (mock soffice) for the hybrid-flow cases.
+const AGENT_PORT = 7396;
+const agent = spawn(process.execPath, [resolve(root, 'agent/server.mjs')], {
+  env: { ...process.env, MV_PORT: String(AGENT_PORT), SOFFICE_PATH: resolve(root, 'test/mock-soffice.mjs'), MV_CACHE_DIR: resolve(root, 'test/.agent-cache') },
+  stdio: 'ignore',
+});
+async function agentUp() {
+  for (let i = 0; i < 40; i++) {
+    try {
+      if ((await fetch(`http://127.0.0.1:${AGENT_PORT}/health`)).ok) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return false;
+}
 
 // Use the pre-installed Chromium in this environment rather than the version
 // pinned by the installed playwright package.
@@ -96,7 +113,46 @@ try {
     failed++;
     console.log(`  ✗ hwp   FAILED: ${String(err).split('\n')[0]}`);
   }
+
+  // Hybrid flow: a .doc routed to the (mock) agent renders as PDF; with a dead
+  // agent it falls back to the client legacy viewer.
+  const oleBytes = () => {
+    const b = new Uint8Array(64);
+    b.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    return b;
+  };
+  try {
+    const up = await agentUp();
+    if (!up) throw new Error('mock agent did not start');
+    const p = await browser.newPage();
+    await p.goto(`${base}/demo/viewer.html?agent=http://127.0.0.1:${AGENT_PORT}&convert=doc`, { waitUntil: 'networkidle' });
+    await p.waitForFunction(() => window.__mv, { timeout: 10000 });
+    const det = await p.evaluate(async (b) => (await window.__mv.render(new Uint8Array(b), 'via-agent.doc')).via, [...oleBytes()]);
+    await p.waitForSelector('.mv-pdf__page', { timeout: 15000 });
+    await p.close();
+    const good = det === 'converter';
+    if (!good) failed++;
+    console.log(`  ${good ? '✓' : '✗'} doc→agent → via=${det}, rendered PDF (.mv-pdf__page)`);
+  } catch (err) {
+    failed++;
+    console.log(`  ✗ doc→agent FAILED: ${String(err).split('\n')[0]}`);
+  }
+
+  try {
+    const p = await browser.newPage();
+    // Point at a closed port → convert fails → client fallback (legacy viewer).
+    await p.goto(`${base}/demo/viewer.html?agent=http://127.0.0.1:59999&convert=doc`, { waitUntil: 'networkidle' });
+    await p.waitForFunction(() => window.__mv, { timeout: 10000 });
+    await p.evaluate(async (b) => window.__mv.render(new Uint8Array(b), 'fallback.doc'), [...oleBytes()]);
+    await p.waitForSelector('.mv-message', { timeout: 15000 });
+    await p.close();
+    console.log('  ✓ doc→fallback → agent down, fell back to client legacy viewer (.mv-message)');
+  } catch (err) {
+    failed++;
+    console.log(`  ✗ doc→fallback FAILED: ${String(err).split('\n')[0]}`);
+  }
 } finally {
+  agent.kill('SIGKILL');
   await browser.close();
   server.close();
 }

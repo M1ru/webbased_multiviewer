@@ -14,6 +14,13 @@
 const config = {
   assetsPath: './',
   rhwpWasmUrl: null, // explicit override for the WASM binary
+
+  // Optional local conversion agent (server-side LibreOffice → PDF).
+  // { url, token, formats: string[], timeoutMs }. When a detected format is in
+  // `formats`, the file is sent to the agent and the returned PDF is rendered;
+  // if the agent is unreachable or conversion fails, we fall back to the
+  // client-side viewer for that format.
+  converter: null,
 };
 
 export function setConfig(patch = {}) {
