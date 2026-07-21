@@ -45,6 +45,8 @@ jobs:
           mkdir -p _site
           cp -r demo _site/demo
           cp -r dist _site/dist
+          # 라이선스/출처 고지도 함께 배포 (퍼블릭 배포 시 준수)
+          cp LICENSE THIRD_PARTY_NOTICES.md _site/
           # 소스맵은 배포 용량만 차지하므로 제외 (원하면 이 줄 삭제)
           find _site/dist -name '*.map' -delete
           # 루트 접속 시 데모로 리다이렉트

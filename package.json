@@ -25,6 +25,7 @@
     "build:agent": "node packaging/build-agent.mjs",
     "build:agent:win": "node packaging/build-agent.mjs --node ./node.exe --out build/mv-agent.exe",
     "fetch:vendor": "node packaging/fetch-vendor.mjs",
+    "notices": "node scripts/gen-notices.mjs",
     "test": "node test/detect.test.mjs && node test/vendor.test.mjs && node test/agent.test.mjs && node test/gen-fixtures.mjs && node test/smoke.mjs"
   },
   "keywords": [

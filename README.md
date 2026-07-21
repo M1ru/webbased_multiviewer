@@ -147,6 +147,16 @@ new MultiViewer({
   다운로드를 제공합니다.
 - hwp/hwpx·pptx 재현도는 문서 구조에 따라 편차가 있을 수 있습니다.
 
-## 라이선스
+## 라이선스 & 출처
 
-MIT. 각 의존 라이브러리는 해당 라이선스(대부분 MIT/Apache-2.0)를 따릅니다.
+본 프로젝트는 **MIT**([`LICENSE`](LICENSE)).
+
+브라우저 번들/배포물에는 여러 오픈소스 구성요소가 포함되며, 모두 퍼미시브
+라이선스(MIT · Apache-2.0 · ISC · BSD · Zlib)입니다. 각 구성요소의 저작권·라이선스
+원문은 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)에 보존되어 있습니다
+(`npm run notices` 로 재생성).
+
+- 주요 엔진: pdf.js(Apache-2.0), SheetJS/xlsx(Apache-2.0), PapaParse·fflate·
+  docx-preview·x-data-spreadsheet·pptx-viewer·@rhwp/core(MIT 등)
+- `jszip` 는 (MIT OR GPL-3.0-or-later) 듀얼 라이선스이며 본 배포는 **MIT**를 선택합니다.
+- 카피레프트(GPL/AGPL) 강제 구성요소는 없습니다.
