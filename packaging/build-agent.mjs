@@ -32,6 +32,12 @@ const nodeBin = argValue('--node') || process.execPath;
 const isWindows = /\.exe$/i.test(nodeBin) || argValue('--out')?.endsWith('.exe') || process.platform === 'win32';
 const outFile = resolve(root, argValue('--out') || (isWindows ? 'build/mv-agent.exe' : 'build/mv-agent'));
 
+// Build-time defaults baked into the exe. Handy for enterprise rollout so the
+// installed agent already knows its allowed origins / central-list URL without
+// per-machine env vars. Env vars still override these at runtime.
+const defaultOrigins = argValue('--default-origins') || '';
+const defaultOriginsUrl = argValue('--default-origins-url') || '';
+
 function argValue(flag) {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
@@ -41,6 +47,8 @@ mkdirSync(outDir, { recursive: true });
 
 // 1) Bundle the ESM agent to a single CommonJS file (SEA main must be CJS).
 console.log('• bundling agent (esbuild)…');
+if (defaultOrigins) console.log(`  default-origins: ${defaultOrigins}`);
+if (defaultOriginsUrl) console.log(`  default-origins-url: ${defaultOriginsUrl}`);
 await build({
   entryPoints: [join(root, 'agent/server.mjs')],
   bundle: true,
@@ -49,6 +57,10 @@ await build({
   target: 'node18',
   outfile: bundle,
   legalComments: 'none',
+  define: {
+    __MV_DEFAULT_ORIGINS__: JSON.stringify(defaultOrigins),
+    __MV_DEFAULT_ORIGINS_URL__: JSON.stringify(defaultOriginsUrl),
+  },
 });
 
 // 2) SEA config + blob.

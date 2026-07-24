@@ -11,10 +11,18 @@
 #define AppName "MultiViewer Agent"
 #define AppVer "0.1.0"
 #define SvcName "MvAgent"
-; Origin(s) of the web page that will call the agent. Override at compile time:
-;   iscc /DAllowedOrigins="https://myapp.company.com" mv-agent.iss
+; Origin(s) of the web page(s) that call the agent. Wildcards supported, so one
+; entry covers a whole domain family (recommended — no reinstall as services grow):
+;   iscc /DAllowedOrigins="https://*.company.com" mv-agent.iss
+; Multiple: comma-separated (e.g. "https://*.company.com,http://*.corp").
 #ifndef AllowedOrigins
   #define AllowedOrigins ""
+#endif
+; Optional central list endpoint (feature A). The agent fetches allowed origins
+; from here on start and periodically — manage them centrally, no reinstall:
+;   iscc /DAllowedOriginsUrl="https://config.company.com/allowed-origins" ...
+#ifndef AllowedOriginsUrl
+  #define AllowedOriginsUrl ""
 #endif
 #ifndef AgentPort
   #define AgentPort "7391"
@@ -40,7 +48,7 @@ Source: "vendor\LibreOffice\*";      DestDir: "{app}\LibreOffice";   Flags: igno
 Filename: "{app}\nssm.exe"; Parameters: "install {#SvcName} ""{app}\mv-agent.exe"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#SvcName} AppDirectory ""{app}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#SvcName} Start SERVICE_AUTO_START"; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#SvcName} AppEnvironmentExtra SOFFICE_PATH={app}\LibreOffice\program\soffice.exe MV_PORT={#AgentPort} MV_ALLOWED_ORIGINS={#AllowedOrigins}"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#SvcName} AppEnvironmentExtra SOFFICE_PATH={app}\LibreOffice\program\soffice.exe MV_PORT={#AgentPort} MV_ALLOWED_ORIGINS={#AllowedOrigins} MV_ALLOWED_ORIGINS_URL={#AllowedOriginsUrl}"; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "start {#SvcName}"; Flags: runhidden
 
 [UninstallRun]

@@ -4,6 +4,6 @@ build/
 node.exe
 packaging/vendor/
 test/fixtures/
-test/.agent-cache/
+test/.agent-cache*/
 *.log
 .DS_Store

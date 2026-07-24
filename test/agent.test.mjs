@@ -1,13 +1,20 @@
 // Agent tests: HTTP pipeline, conversion (via mock soffice), caching, and the
 // localhost CORS / Host-header security guards. No real LibreOffice needed.
 import { spawn } from 'node:child_process';
-import { request as httpRequest } from 'node:http';
+import { request as httpRequest, createServer } from 'node:http';
+import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PORT = 7395;
 const base = `http://127.0.0.1:${PORT}`;
+
+// Start from a clean cache so the cache-miss assertion is deterministic on re-run.
+rmSync(resolve(here, '.agent-cache'), { recursive: true, force: true });
+rmSync(resolve(here, '.agent-cache2'), { recursive: true, force: true });
+let server2 = null;
+let central = null;
 
 let pass = 0;
 let fail = 0;
@@ -102,11 +109,59 @@ try {
     r.end();
   });
   ok('Host guard: non-localhost Host rejected (403)', badHostStatus === 403, `status=${badHostStatus}`);
+
+  // --- Wildcard origins (B) via env + central remote list (A) via mock endpoint ---
+  const CENTRAL_PORT = 7398;
+  central = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ origins: ['https://*.partner.com'] }));
+  });
+  await new Promise((r) => central.listen(CENTRAL_PORT, '127.0.0.1', r));
+
+  const PORT2 = 7399;
+  const base2 = `http://127.0.0.1:${PORT2}`;
+  server2 = spawn(process.execPath, [resolve(here, '../agent/server.mjs')], {
+    env: {
+      ...process.env,
+      MV_PORT: String(PORT2),
+      SOFFICE_PATH: resolve(here, 'mock-soffice.mjs'),
+      MV_CACHE_DIR: resolve(here, '.agent-cache2'),
+      MV_ALLOWED_ORIGINS: 'https://*.company.com', // wildcard (B)
+      MV_ALLOWED_ORIGINS_URL: `http://127.0.0.1:${CENTRAL_PORT}/origins`, // central list (A)
+    },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+
+  let h2 = null;
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch(`${base2}/health`);
+      if (r.ok) {
+        h2 = await r.json();
+        if (h2.origins.remote > 0) break; // central list fetched
+      }
+    } catch {
+      /* not yet */
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  ok('wildcard agent: up + central list loaded', !!h2 && h2.origins.static === 1 && h2.origins.remote === 1, JSON.stringify(h2 && h2.origins));
+
+  const wc = await fetch(`${base2}/health`, { headers: { Origin: 'https://app.company.com' } });
+  ok('wildcard static: *.company.com allowed', wc.headers.get('access-control-allow-origin') === 'https://app.company.com');
+
+  const rc = await fetch(`${base2}/health`, { headers: { Origin: 'https://x.partner.com' } });
+  ok('central remote: *.partner.com allowed', rc.headers.get('access-control-allow-origin') === 'https://x.partner.com');
+
+  const fc = await fetch(`${base2}/health`, { headers: { Origin: 'https://evil.com' } });
+  ok('foreign origin rejected (403)', fc.status === 403, `status=${fc.status}`);
 } catch (err) {
   console.log('  ✗ agent test error:', err.message);
   fail++;
 } finally {
   server.kill('SIGKILL');
+  if (server2) server2.kill('SIGKILL');
+  if (central) central.close();
 }
 
 console.log(fail ? `\n${fail} failed, ${pass} passed` : `\nAll ${pass} agent tests passed`);

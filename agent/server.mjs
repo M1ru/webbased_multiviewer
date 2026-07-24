@@ -15,8 +15,13 @@
 //   GET  /health            → { ok, soffice, formats, version }
 //   POST /convert           → body: raw bytes, header X-Filename; returns application/pdf
 //
-// Config via env: MV_PORT, MV_TOKEN, MV_ALLOWED_ORIGINS (comma list, or '*'),
-//   MV_MAX_BYTES, MV_CONCURRENCY, MV_CACHE_DIR, MV_TIMEOUT_MS, SOFFICE_PATH.
+// Config via env: MV_PORT, MV_TOKEN, MV_ALLOWED_ORIGINS (comma list of exact or
+//   wildcard patterns, or '*'), MV_ALLOWED_ORIGINS_URL (central list endpoint),
+//   MV_ALLOWED_ORIGINS_TOKEN, MV_ORIGINS_REFRESH_MS, MV_MAX_BYTES,
+//   MV_CONCURRENCY, MV_CACHE_DIR, MV_TIMEOUT_MS, SOFFICE_PATH.
+//
+// Build-time defaults (baked into the exe by packaging/build-agent.mjs):
+//   --default-origins, --default-origins-url. Env vars override them.
 
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -25,12 +30,21 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { convertToPdf, probeSoffice, CONVERTIBLE } from './convert.mjs';
+import { createOriginStore, parsePatterns } from './origins.js';
+
+// Compiled-in defaults (replaced by esbuild `define` in the SEA build; undefined
+// when running from source, hence the typeof guards).
+const BAKED_ORIGINS = typeof __MV_DEFAULT_ORIGINS__ !== 'undefined' ? __MV_DEFAULT_ORIGINS__ : '';
+const BAKED_ORIGINS_URL = typeof __MV_DEFAULT_ORIGINS_URL__ !== 'undefined' ? __MV_DEFAULT_ORIGINS_URL__ : '';
 
 const cfg = {
   host: '127.0.0.1',
   port: Number(process.env.MV_PORT || 7391),
   token: process.env.MV_TOKEN || '',
-  allowedOrigins: (process.env.MV_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+  originsStatic: parsePatterns(process.env.MV_ALLOWED_ORIGINS || BAKED_ORIGINS),
+  originsUrl: process.env.MV_ALLOWED_ORIGINS_URL || BAKED_ORIGINS_URL || '',
+  originsToken: process.env.MV_ALLOWED_ORIGINS_TOKEN || '',
+  originsRefreshMs: Number(process.env.MV_ORIGINS_REFRESH_MS || 5 * 60 * 1000),
   maxBytes: Number(process.env.MV_MAX_BYTES || 100 * 1024 * 1024),
   concurrency: Number(process.env.MV_CONCURRENCY || 2),
   cacheDir: process.env.MV_CACHE_DIR || join(tmpdir(), 'mv-agent-cache'),
@@ -41,12 +55,21 @@ const cfg = {
 const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1)(:\d+)?$/i;
 
-/** Is this Origin permitted? Defaults to localhost only; MV_ALLOWED_ORIGINS extends it. */
+// Allow-list: localhost (dev) + static wildcard patterns + optional central list.
+const originStore = createOriginStore({
+  staticPatterns: cfg.originsStatic,
+  url: cfg.originsUrl,
+  token: cfg.originsToken,
+  cacheFile: join(cfg.cacheDir, 'allowed-origins.json'),
+  refreshMs: cfg.originsRefreshMs,
+  log: (m) => console.log(`[mv-agent] ${m}`),
+});
+
+/** Is this Origin permitted? localhost always; else static/remote patterns. */
 function originAllowed(origin) {
-  if (cfg.allowedOrigins.includes('*')) return true;
   if (!origin) return true; // non-CORS client (curl, native) — browser always sends Origin
   if (LOCAL_ORIGIN.test(origin)) return true;
-  return cfg.allowedOrigins.includes(origin);
+  return originStore.allowed(origin);
 }
 
 function applyCors(req, res) {
@@ -140,6 +163,11 @@ const server = createServer(async (req, res) => {
         version: sofficeVersion || null,
         formats: [...CONVERTIBLE],
         concurrency: cfg.concurrency,
+        origins: {
+          static: originStore.staticCount,
+          remote: originStore.remoteCount,
+          remoteEnabled: originStore.remoteEnabled,
+        },
       });
     }
 
@@ -180,11 +208,14 @@ const server = createServer(async (req, res) => {
 // single CommonJS file for the SEA executable.
 async function start() {
   await mkdir(cfg.cacheDir, { recursive: true }).catch(() => {});
+  originStore.start(); // fetch central list (if configured) + schedule refresh
   server.listen(cfg.port, cfg.host, async () => {
     sofficeVersion = (await probeSoffice(cfg.sofficePath)) || false;
     console.log(`[mv-agent] listening on http://${cfg.host}:${cfg.port}`);
     console.log(`[mv-agent] soffice: ${sofficeVersion || 'NOT FOUND — set SOFFICE_PATH'}`);
-    console.log(`[mv-agent] CORS: ${cfg.allowedOrigins.includes('*') ? 'ANY (*)' : `localhost + ${cfg.allowedOrigins.join(', ') || '(none extra)'}`}`);
+    const remote = cfg.originsUrl ? ` + central(${cfg.originsUrl})` : '';
+    console.log(`[mv-agent] CORS: localhost + ${cfg.originsStatic.length} pattern(s)${remote}`);
+    if (cfg.originsStatic.length) console.log(`[mv-agent]   patterns: ${cfg.originsStatic.join(', ')}`);
   });
 }
 

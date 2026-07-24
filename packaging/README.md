@@ -22,6 +22,21 @@ npm run build:agent
 node packaging/build-agent.mjs --node ./node.exe --out build/mv-agent.exe
 ```
 
+### 빌드 시 기본 허용 Origin / 중앙 URL 굽기 (선택)
+
+기업 배포 시 각 PC에 환경변수를 주지 않아도 되도록, **허용 Origin 패턴**과
+**중앙 목록 URL(A)** 을 exe에 직접 구워 넣을 수 있습니다. 런타임 env 가 있으면 그게
+우선합니다.
+
+```bash
+node packaging/build-agent.mjs --node ./node.exe --out build/mv-agent.exe \
+  --default-origins "https://*.company.com,http://*.corp" \
+  --default-origins-url "https://config.company.com/allowed-origins"
+```
+
+- 와일드카드(B)는 `--default-origins` 로 구우면 설치 후 손 안 대도 하위 서비스가 통과
+- 나중에 중앙관리(A)로 전환하려면 `--default-origins-url` 만 지정하면 됩니다
+
 빌드 과정: esbuild가 에이전트(ESM)를 단일 CJS로 번들 → SEA blob 생성 → 대상 node
 바이너리에 postject로 주입. postject는 순수 JS라 호스트 OS와 무관하게 동작합니다.
 
